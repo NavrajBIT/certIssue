@@ -1,6 +1,7 @@
 from scripts.tools import get_account
 from scripts.user_data import user_data
 from brownie import Certificate
+from brownie import Contract
 from PIL import Image, ImageDraw, ImageFont
 import requests
 import json
@@ -16,9 +17,12 @@ def get_account_list():
 
 def deploy_contract():
     account = get_account()
-    Certificate.deploy(
+    certificate = Certificate.deploy(
         "Federation of Esports Associations India", "BIT", {"from": account}
     )
+    deployed_contract = {"deployed_contract": certificate.address}
+    with open("deployed_contract.json", "w") as file:
+        json.dump(deployed_contract, file)
 
 
 def prepare_cert_images():
@@ -29,12 +33,13 @@ def prepare_cert_images():
 def print_image(name, tournament, account):
     image = Image.open("template.jpeg")
     I1 = ImageDraw.Draw(image)
-    myFont = ImageFont.truetype("arial.ttf", 65)
-    x_pos = (480 + 1200) / 2 - (len(name) * 40) / 2
-    I1.text((x_pos, 430), name, font=myFont, fill=(0, 0, 0))
-    myFont = ImageFont.truetype("arial.ttf", 20)
-    x_pos = 900
-    I1.text((x_pos, 550), tournament, font=myFont, fill=(0, 0, 0))
+    myFont = ImageFont.truetype("arial.ttf", 40)
+    x_pos = 450
+    I1.text((x_pos, 420), name, font=myFont, fill=(0, 0, 0))
+    myFont = ImageFont.truetype("arial.ttf", 18)
+    x_pos = 820
+    I1.text((x_pos, 500), tournament, font=myFont, fill=(0, 0, 0))
+    image.show()
     image.save("certificates/" + account + ".png")
 
 
@@ -72,7 +77,7 @@ def upload_metadata(account):
 
 def create_metadata(name, tournament, account, cert_url):
     nft_name = "Certificate of Participation"
-    nft_description = f"Certificate of participation proudly presented to {name} and this certifies that he/she has participated in {tournament} in KALRAAV 2022 held at Sikkim Manipal Institute of Technology, Majhitar from November 19, 2022 - November 21, 2022."
+    nft_description = f"Certificate of participation proudly presented to {name} and this certifies that he/she has participated in {tournament} in IRIS RANBHOOMI 2022 held at Indian institute of Management, Indore from November 11, 2022 - November 13, 2022"
     metadata = {"name": nft_name, "description": nft_description, "image": cert_url}
     metadata_filepath = "metadata/" + account + ".json"
     with open(metadata_filepath, "w") as metadata_file:
@@ -82,13 +87,17 @@ def create_metadata(name, tournament, account, cert_url):
 
 
 def mint_certificates():
-    certificate = Certificate[-1]
+    with open("build/contracts/Certificate.json", "r") as file:
+        data = json.load(file)
+        abi = data["abi"]
+    with open("deployed_contract.json", "r") as file:
+        data = json.load(file)
+        deployed_contract = data["deployed_contract"]
+    certificate = Contract.from_abi("Certificate", deployed_contract, abi)
     for user in user_data:
         user_status = {"name": user["user_name"], "account": user["user_account"]}
         try:
-            cert_url = upload_certificate(
-                account="0x9E6407D973648A3382B8E84e92E1BD3DFD2E9387"
-            )
+            cert_url = upload_certificate(account=user["user_account"])
             user_status["cert_url"] = cert_url
             metadata_url = create_metadata(
                 user["user_name"],
@@ -97,20 +106,34 @@ def mint_certificates():
                 cert_url,
             )
             user_status["metadata_url"] = metadata_url
+            account = get_account()
             certificate_creation_tx = certificate.createCertificate(
-                metadata_url, user["user_account"]
+                metadata_url, user["user_account"], {"from": account}
             )
             certificate_creation_tx.wait(1)
             user_status["status"] = "Success"
         except:
             user_status["status"] = "Failed"
         status.append(user_status)
-    print(status)
     with open("status.json", "w") as status_file:
         json.dump(status, status_file)
 
 
-def main():
-    prepare_cert_images()
-    deploy_contract()
-    mint_certificates()
+def check_issued_certificates():
+    with open("build/contracts/Certificate.json", "r") as file:
+        data = json.load(file)
+        abi = data["abi"]
+    certificate = Contract.from_abi(
+        "Certificate", "0x1F18686Df440E13Ad95AeF3fd8E572bDA8c69872", abi
+    )
+    mint_status = {}
+    for user in user_data:
+        user_address = user["user_account"]
+        balance = certificate.balanceOf(user_address)
+        if int(balance) == 1:
+            mint_status[user_address] = "Success"
+        elif int(balance) == 0:
+            mint_status[user_address] = "Failed"
+        elif int(balance) > 1:
+            mint_status[user_address] = "ooooooooooooppppppppsssssssssssss"
+    print(mint_status)
