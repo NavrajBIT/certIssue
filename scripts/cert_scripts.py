@@ -38,8 +38,7 @@ def print_image(name, tournament, account):
     I1.text((x_pos, 420), name, font=myFont, fill=(0, 0, 0))
     myFont = ImageFont.truetype("arial.ttf", 18)
     x_pos = 820
-    I1.text((x_pos, 500), tournament, font=myFont, fill=(0, 0, 0))
-    image.show()
+    I1.text((x_pos, 500), tournament, font=myFont, fill=(0, 0, 0))    
     image.save("certificates/" + account + ".png")
 
 
@@ -55,7 +54,7 @@ def upload_certificate(account):
         },
     )
     cid = response.json()["cid"]
-    file_url = "http://" + cid + ".ipfs.dweb.link"
+    file_url = "https://" + cid + ".ipfs.dweb.link"
     return file_url
 
 
@@ -71,7 +70,7 @@ def upload_metadata(account):
         },
     )
     cid = response.json()["cid"]
-    file_url = "http://" + cid + ".ipfs.dweb.link"
+    file_url = "https://" + cid + ".ipfs.dweb.link"
     return file_url
 
 
@@ -123,9 +122,10 @@ def check_issued_certificates():
     with open("build/contracts/Certificate.json", "r") as file:
         data = json.load(file)
         abi = data["abi"]
-    certificate = Contract.from_abi(
-        "Certificate", "0x1F18686Df440E13Ad95AeF3fd8E572bDA8c69872", abi
-    )
+    with open("deployed_contract.json", "r") as file:
+        data = json.load(file)
+        deployed_contract = data["deployed_contract"]
+    certificate = Contract.from_abi("Certificate", deployed_contract, abi)
     mint_status = {}
     for user in user_data:
         user_address = user["user_account"]
@@ -135,5 +135,5 @@ def check_issued_certificates():
         elif int(balance) == 0:
             mint_status[user_address] = "Failed"
         elif int(balance) > 1:
-            mint_status[user_address] = "ooooooooooooppppppppsssssssssssss"
+            mint_status[user_address] = "oooooooooooops issued more than one"
     print(mint_status)

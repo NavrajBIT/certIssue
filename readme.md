@@ -29,6 +29,8 @@
     * >>> brownie run scripts/mint_certs.py
 
 11.  Change the the brownie network to polygon and run step 7.
+    * >>>brownie networks add Polygon polygon-mainnet host=https://rplurl chainid=137
+    * >>>brownie run scripts/issue_all.py --network polygon-mainnet
 
 12.  Check the status from "status.json" file.
 
